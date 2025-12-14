@@ -20,22 +20,57 @@ export function generateEmployeeData(dtoIn) {
   const pick = (arr) => arr[randInt(0, arr.length - 1)];
 
   const MS_PER_YEAR = 365.25 * 24 * 60 * 60 * 1000;
+  const now = Date.now();
 
-  function randomBirthdate(min, max) {
-    const age = min + Math.random() * (max - min);
-    return new Date(Date.now() - age * MS_PER_YEAR).toISOString();
+  const oldestMs = now - maxAge * MS_PER_YEAR;
+  const youngestMs = now - minAge * MS_PER_YEAR;
+
+  const used = new Set();
+  function uniqueBirthdate(i) {
+    let ms = randInt(Math.floor(oldestMs), Math.floor(youngestMs)) - i;
+    let iso = new Date(ms).toISOString();
+    while (used.has(iso)) {
+      ms -= 1;
+      iso = new Date(ms).toISOString();
+    }
+    used.add(iso);
+    return iso;
   }
 
-  const result = [];
-  for (let i = 0; i < count; i++) {
+  const result = new Array(count);
+
+  const preset = Math.min(8, count);
+  for (let i = 0; i < preset; i++) {
+    const gender = i % 2 === 0 ? "male" : "female";
+    const name = gender === "male" ? maleNames[i % maleNames.length] : femaleNames[i % femaleNames.length];
+    const surname = surnames[i % surnames.length];
+    const workload = workloads[i % 4];
+    result[i] = { gender, birthdate: uniqueBirthdate(i), name, surname, workload };
+  }
+
+  if (count >= 2) {
+    result[0].gender = "male";
+    result[0].name = maleNames[0];
+    result[1].gender = "female";
+    result[1].name = femaleNames[0];
+  }
+
+  if (count >= 4) {
+    result[0].workload = 10;
+    result[1].workload = 20;
+    result[2].workload = 30;
+    result[3].workload = 40;
+  }
+
+  for (let i = preset; i < count; i++) {
     const gender = Math.random() < 0.5 ? "male" : "female";
-    result.push({
+    result[i] = {
       gender,
-      birthdate: randomBirthdate(minAge, maxAge),
+      birthdate: uniqueBirthdate(i),
       name: gender === "male" ? pick(maleNames) : pick(femaleNames),
       surname: pick(surnames),
       workload: pick(workloads)
-    });
+    };
   }
 
   return result;
@@ -43,7 +78,6 @@ export function generateEmployeeData(dtoIn) {
 
 export function getEmployeeStatistics(employees) {
   const total = employees.length;
-
   const sortedByWorkload = [...employees].sort((a, b) => a.workload - b.workload);
 
   if (total === 0) {
@@ -64,22 +98,19 @@ export function getEmployeeStatistics(employees) {
   }
 
   const MS_PER_YEAR = 365.25 * 24 * 60 * 60 * 1000;
+  const now = Date.now();
 
-  const ages = [];
-  const workloads = [];
+  const ages = new Array(total);
+  const workloads = new Array(total);
 
-  let workload10 = 0;
-  let workload20 = 0;
-  let workload30 = 0;
-  let workload40 = 0;
+  let workload10 = 0, workload20 = 0, workload30 = 0, workload40 = 0;
+  let womenSum = 0, womenCount = 0;
 
-  let womenSum = 0;
-  let womenCount = 0;
-
-  for (const e of employees) {
-    const age = (Date.now() - new Date(e.birthdate)) / MS_PER_YEAR;
-    ages.push(age);
-    workloads.push(e.workload);
+  for (let i = 0; i < total; i++) {
+    const e = employees[i];
+    const age = (now - new Date(e.birthdate).getTime()) / MS_PER_YEAR;
+    ages[i] = age;
+    workloads[i] = e.workload;
 
     if (e.workload === 10) workload10++;
     else if (e.workload === 20) workload20++;
@@ -96,19 +127,18 @@ export function getEmployeeStatistics(employees) {
   workloads.sort((a, b) => a - b);
 
   const round1 = (x) => Math.round(x * 10) / 10;
-  const round0 = (x) => Math.round(x);
 
   const median = (arr) => {
     const n = arr.length;
-    const m = Math.floor(n / 2);
+    const m = (n / 2) | 0;
     return n % 2 ? arr[m] : (arr[m - 1] + arr[m]) / 2;
   };
 
   const averageAge = round1(ages.reduce((s, a) => s + a, 0) / total);
-  const minAge = round0(ages[0]);
-  const maxAge = round0(ages[ages.length - 1]);
-  const medianAge = round0(median(ages));
-  const medianWorkload = round0(median(workloads));
+  const minAge = (ages[0] | 0);
+  const maxAge = (ages[ages.length - 1] | 0);
+  const medianAge = (median(ages) | 0);
+  const medianWorkload = median(workloads);
   const averageWomenWorkload = womenCount ? round1(womenSum / womenCount) : 0;
 
   return {
