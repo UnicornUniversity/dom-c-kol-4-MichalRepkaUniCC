@@ -23,7 +23,9 @@ export function generateEmployeeData(dtoIn) {
 
   function randomBirthdate(min, max) {
     const eps = 0.0001;
-    const age = min + eps + Math.random() * (max - min - 2 * eps);
+    const span = max - min - 2 * eps;
+    const safeSpan = span > 0 ? span : eps;
+    const age = min + eps + Math.random() * safeSpan;
     return new Date(Date.now() - age * MS_PER_YEAR).toISOString();
   }
 
@@ -44,69 +46,34 @@ export function generateEmployeeData(dtoIn) {
 
 export function getEmployeeStatistics(employees) {
   const total = employees.length;
-  const MS_PER_YEAR = 365.25 * 24 * 60 * 60 * 1000;
-
-  const ages = [];
-  const workloads = [];
 
   let workload10 = 0;
   let workload20 = 0;
   let workload30 = 0;
   let workload40 = 0;
 
-  let womenSum = 0;
-  let womenCount = 0;
+  const sortedByWorkload = [...employees].sort((a, b) => a.workload - b.workload);
 
-  for (const e of employees) {
-    const age = (Date.now() - new Date(e.birthdate)) / MS_PER_YEAR;
-    ages.push(age);
-    workloads.push(e.workload);
-
-    if (e.workload === 10) workload10++;
-    if (e.workload === 20) workload20++;
-    if (e.workload === 30) workload30++;
-    if (e.workload === 40) workload40++;
-
-    if (e.gender === "female") {
-      womenSum += e.workload;
-      womenCount++;
-    }
+  if (total === 0) {
+    return {
+      total: 0,
+      workload10: 0,
+      workload20: 0,
+      workload30: 0,
+      workload40: 0,
+      averageAge: 0.0,
+      minAge: 0,
+      maxAge: 0,
+      medianAge: 0,
+      medianWorkload: 0,
+      averageWomenWorkload: 0,
+      sortedByWorkload
+    };
   }
 
-  ages.sort((a, b) => a - b);
-  workloads.sort((a, b) => a - b);
+  const MS_PER_YEAR = 365.25 * 24 * 60 * 60 * 1000;
 
-  const round1 = (x) => Math.round(x * 10) / 10;
-  const round0 = (x) => Math.round(x);
+  const ages = [];
+  const workloads = [];
 
-  const median = (arr) => {
-    const m = Math.floor(arr.length / 2);
-    return arr.length % 2 ? arr[m] : (arr[m - 1] + arr[m]) / 2;
-  };
-
-  const averageAge = round1(ages.reduce((s, a) => s + a, 0) / total);
-  const minAge = round0(ages[0]);
-  const maxAge = round0(ages[ages.length - 1]);
-  const medianAge = round0(median(ages));
-  const medianWorkload = round0(median(workloads));
-  const averageWomenWorkload = womenCount ? round1(womenSum / womenCount) : 0;
-
-  const sortedByWorkload = [...employees].sort(
-    (a, b) => a.workload - b.workload
-  );
-
-  return {
-    total,
-    workload10,
-    workload20,
-    workload30,
-    workload40,
-    averageAge,
-    minAge,
-    maxAge,
-    medianAge,
-    medianWorkload,
-    averageWomenWorkload,
-    sortedByWorkload
-  };
-}
+  let womenSum = 0;
